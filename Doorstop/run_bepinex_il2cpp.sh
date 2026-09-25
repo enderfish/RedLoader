@@ -23,7 +23,7 @@ enabled="1"
 
 # Path to the assembly to load and execute
 # NOTE: The entrypoint must be of format `static void Doorstop.Entrypoint.Start()`
-target_assembly="_Redloader/net6/RedLoader.dll"
+target_assembly="_Redloader/net10/RedLoader.dll"
 
 # Overrides the default boot.config file path
 boot_config_override=

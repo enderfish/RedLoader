@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using AdvancedTerrainGrass;
@@ -420,7 +420,7 @@ public static class GameCommands
             var attribute = method.GetCustomAttribute<DebugCommandAttribute>();
             if (attribute != null)
             {
-                var fastDelegate = method.GetFastDelegate();
+                var fastDelegate = method.GetFastInvoker(); // MonoMod 25: was GetFastDelegate
 
                 bool Wrapper(string s)
                 {

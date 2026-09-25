@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Description>RedLoader</Description>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>$(LoaderTfm)</TargetFramework>
         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
         <!-- Force nuget assembly output on netstandard2.0 -->
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -10,15 +10,16 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="HarmonyX" Version="2.10.1" />
+        <PackageReference Include="HarmonyX" Version="2.16.1" />
         <PackageReference Include="Iced" Version="1.21.0" />
 <!--        <PackageReference Include="Il2CppInterop.Generator" Version="$(Il2CppInteropVersion)"/>-->
 <!--        <PackageReference Include="Il2CppInterop.HarmonySupport" Version="$(Il2CppInteropVersion)"/>-->
 <!--        <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>-->
 <!--        <PackageReference Include="Il2CppInterop.Runtime" Version="$(Il2CppInteropVersion)"/>-->
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" IncludeAssets="compile" PrivateAssets="all"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" IncludeAssets="compile" PrivateAssets="all"/>
-        <PackageReference Include="MonoMod.RuntimeDetour" Version="22.7.31.1"/>
+        <!-- Copy-local: the official .NET runtime does not bundle these (BepInEx's mini-coreclr did), and Il2CppInterop needs them at runtime. -->
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1"/>
+        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.6"/>
         <PackageReference Include="Samboy063.Cpp2IL.Core" Version="$(Cpp2IlVersion)"/>
         <PackageReference Include="SemanticVersioning" Version="3.0.0" />
         <PackageReference Include="Samboy063.Tomlet" Version="5.4.0" />
@@ -60,7 +61,7 @@
         <Delete Files="@(FilesToDelete)"/>
     </Target>
 
-    <Target Name="CopyProjectDllOnly" AfterTargets="Build">
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="F:\SteamLibrary\steamapps\common\Sons Of The Forest\_Redloader\net6" />
+    <Target Name="CopyProjectDllOnly" AfterTargets="Build" Condition="Exists('$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)')">
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)" />
     </Target>
 </Project>

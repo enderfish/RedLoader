@@ -17,6 +17,9 @@
         <Il2CppInteropVersion>1.4.6-ci.602</Il2CppInteropVersion>
 
         <ProjectAlias>_Redloader</ProjectAlias>
-        <GamePath>F:\SteamLibrary\steamapps\common\Sons Of The Forest</GamePath>
+        <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Sons Of The Forest</GamePath>
+        <!-- .NET target for the loader, SDK and Il2CppInterop; LoaderNetFolder is the runtime folder name under _Redloader -->
+        <LoaderTfm>net10.0</LoaderTfm>
+        <LoaderNetFolder>net10</LoaderNetFolder>
     </PropertyGroup>
 </Project>

@@ -1,61 +1,60 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.IO;
-using MonoMod.Utils;
+using System.Runtime.InteropServices;
 
 namespace RedLoader.Unix;
 
+/// <summary>
+///     libc stream helpers for the Unix console. Previously bound through MonoMod 22's <c>DynDllImport</c>,
+///     which MonoMod 25 removed; these are plain P/Invokes with a resolver that tries the same library names.
+/// </summary>
 internal static class UnixStreamHelper
 {
-    public delegate int dupDelegate(int fd);
+    private const string LibC = "libc";
 
-    public delegate int fcloseDelegate(IntPtr stream);
-
-    public delegate IntPtr fdopenDelegate(int fd, string mode);
-
-    public delegate int fflushDelegate(IntPtr stream);
-
-    public delegate IntPtr freadDelegate(IntPtr ptr, IntPtr size, IntPtr nmemb, IntPtr stream);
-
-    public delegate int fwriteDelegate(IntPtr ptr, IntPtr size, IntPtr nmemb, IntPtr stream);
-
-    public delegate int isattyDelegate(int fd);
-
-    [DynDllImport("libc")]
-    public static dupDelegate dup;
-
-    [DynDllImport("libc")]
-    public static fdopenDelegate fdopen;
-
-    [DynDllImport("libc")]
-    public static freadDelegate fread;
-
-    [DynDllImport("libc")]
-    public static fwriteDelegate fwrite;
-
-    [DynDllImport("libc")]
-    public static fcloseDelegate fclose;
-
-    [DynDllImport("libc")]
-    public static fflushDelegate fflush;
-
-    [DynDllImport("libc")]
-    public static isattyDelegate isatty;
+    private static readonly string[] LibCCandidates =
+    {
+        "libc.so.6",                // Ubuntu glibc
+        "libc",                     // Linux glibc
+        "/usr/lib/libSystem.dylib", // OSX POSIX
+    };
 
     static UnixStreamHelper()
     {
-        var libcMapping = new Dictionary<string, List<DynDllMapping>>
+        NativeLibrary.SetDllImportResolver(typeof(UnixStreamHelper).Assembly, (name, assembly, searchPath) =>
         {
-            ["libc"] = new()
-            {
-                "libc.so.6",               // Ubuntu glibc
-                "libc",                    // Linux glibc
-                "/usr/lib/libSystem.dylib" // OSX POSIX
-            }
-        };
+            if (name != LibC) return IntPtr.Zero;
 
-        typeof(UnixStreamHelper).ResolveDynDllImports(libcMapping);
+            foreach (var candidate in LibCCandidates)
+            {
+                if (NativeLibrary.TryLoad(candidate, assembly, searchPath, out var handle))
+                    return handle;
+            }
+
+            return IntPtr.Zero;
+        });
     }
+
+    [DllImport(LibC, EntryPoint = "dup")]
+    public static extern int dup(int fd);
+
+    [DllImport(LibC, EntryPoint = "fdopen")]
+    public static extern IntPtr fdopen(int fd, [MarshalAs(UnmanagedType.LPStr)] string mode);
+
+    [DllImport(LibC, EntryPoint = "fread")]
+    public static extern IntPtr fread(IntPtr ptr, IntPtr size, IntPtr nmemb, IntPtr stream);
+
+    [DllImport(LibC, EntryPoint = "fwrite")]
+    public static extern int fwrite(IntPtr ptr, IntPtr size, IntPtr nmemb, IntPtr stream);
+
+    [DllImport(LibC, EntryPoint = "fclose")]
+    public static extern int fclose(IntPtr stream);
+
+    [DllImport(LibC, EntryPoint = "fflush")]
+    public static extern int fflush(IntPtr stream);
+
+    [DllImport(LibC, EntryPoint = "isatty")]
+    public static extern int isatty(int fd);
 
     public static Stream CreateDuplicateStream(int fileDescriptor)
     {

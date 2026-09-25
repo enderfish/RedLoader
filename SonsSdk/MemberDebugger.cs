@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using MonoMod.Utils;
 using RedLoader;
 using SonsSdk.Attributes;
@@ -133,13 +133,13 @@ public class MemberDebugger
     {
         public Type Type;
         public string Name;
-        public FastReflectionDelegate Getter;
+        public FastReflectionHelper.FastInvoker Getter; // MonoMod 25: was FastReflectionDelegate
         
         public DebuggingComponent(PropertyInfo prop)
         {
             Type = prop.PropertyType;
             Name = prop.Name;
-            Getter = prop.GetGetMethod().GetFastDelegate();
+            Getter = prop.GetGetMethod().GetFastInvoker();
         }
     }
 }

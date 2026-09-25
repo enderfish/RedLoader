@@ -1,7 +1,6 @@
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using MonoMod.RuntimeDetour;
 using RedLoader;
 
 namespace RedLoader.Unity.IL2CPP.Hook;
@@ -61,12 +60,9 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
 
     public MethodBase GenerateTrampoline(MethodBase signature = null)
     {
-        if (TrampolineMethod == null)
-        {
-            Prepare();
-            TrampolineMethod = DetourHelper.GenerateNativeProxy(TrampolinePtr, signature);
-        }
-
+        // MonoMod 25 removed DetourHelper.GenerateNativeProxy. Nothing in RedLoader consumes the managed proxy
+        // MethodBase; every caller uses the generic overload, which marshals a delegate straight from TrampolinePtr.
+        Prepare();
         return TrampolineMethod;
     }
 

@@ -33,12 +33,14 @@ public class BuildContext : FrostingContext
         Development
     }
 
-    public const string DoorstopVersion = "4.3.0";
-    public const string DotnetRuntimeVersion = "6.0.7";
+    public const string DoorstopVersion = "4.5.0";
+    public const string DotnetRuntimeVersion = "10.0.12";
+    public const string LoaderNetFolder = "net10";
     public const string DobbyVersion = "1.0.5";
 
-    public const string DotnetRuntimeZipUrl =
-        $"https://github.com/BepInEx/dotnet-runtime/releases/download/{DotnetRuntimeVersion}/mini-coreclr-Release.zip";
+    // Official Microsoft runtime archive. Doorstop only needs coreclr.dll plus the shared framework folder as corlib_dir.
+    public static string DotnetRuntimeZipUrl(string rid) =>
+        $"https://builds.dotnet.microsoft.com/dotnet/Runtime/{DotnetRuntimeVersion}/dotnet-runtime-{DotnetRuntimeVersion}-{rid}.zip";
 
     internal readonly DistributionTarget[] Distributions =
     {
@@ -182,7 +184,9 @@ public sealed class DownloadDependenciesTask : FrostingTask<BuildContext>
             ctx.CreateDirectory(dotnetDir);
             ctx.CleanDirectory(dotnetDir);
             ctx.DownloadZipFiles($"dotnet-runtime {BuildContext.DotnetRuntimeVersion}",
-                                 ("dotnet runtime", BuildContext.DotnetRuntimeZipUrl, dotnetDir));
+                                 ctx.Distributions.Select(d => ("dotnet runtime " + d.RuntimeIdentifier,
+                                                                BuildContext.DotnetRuntimeZipUrl(d.RuntimeIdentifier),
+                                                                dotnetDir.Combine(d.RuntimeIdentifier))).ToArray());
         });
 
         cache.Save();
@@ -216,7 +220,7 @@ public sealed class MakeDistTask : FrostingTask<BuildContext>
             ctx.CleanDirectory(targetDir);
 
             var redloaderDir = targetDir.Combine("_Redloader");
-            var net6Dir = redloaderDir.Combine("net6");
+            var net6Dir = redloaderDir.Combine(BuildContext.LoaderNetFolder);
             ctx.CreateDirectory(redloaderDir);
             ctx.CreateDirectory(net6Dir);
             ctx.CreateDirectory(targetDir.Combine("Mods"));
@@ -252,7 +256,9 @@ public sealed class MakeDistTask : FrostingTask<BuildContext>
 
             ctx.CopyFile(ctx.CacheDirectory.Combine("dobby").Combine($"dobby_{dist.Os}").CombineWithFilePath($"{dist.DllPrefix}dobby_{dist.Arch}.{dist.DllExtension}"),
                          net6Dir.CombineWithFilePath($"{dist.DllPrefix}dobby.{dist.DllExtension}"));
-            ctx.CopyDirectory(ctx.CacheDirectory.Combine("dotnet").Combine(dist.RuntimeIdentifier),
+            // The Microsoft archive nests the framework under shared/Microsoft.NETCore.App/<version>; flatten it into _Redloader/dotnet.
+            ctx.CopyDirectory(ctx.CacheDirectory.Combine("dotnet").Combine(dist.RuntimeIdentifier)
+                                 .Combine("shared").Combine("Microsoft.NETCore.App").Combine(BuildContext.DotnetRuntimeVersion),
                               redloaderDir.Combine("dotnet"));
             ctx.CopyFile(ctx.RootDirectory.Combine("Libs").GetFilePath("Splash.dll"), net6Dir.GetFilePath("Splash.dll"));
             ctx.CopyFile(ctx.RootDirectory.Combine("Resources").GetFilePath("bg.png"), redloaderDir.GetFilePath("bg.png"));

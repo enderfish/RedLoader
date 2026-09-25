@@ -109,6 +109,9 @@ Dedicated servers on windows should work out of the box. Just extract the RedLoa
 
 
 ### Compiling from source
+See `PORTING-NET10.md` for the .NET 10 build (this branch). Short version: install the .NET 10 SDK, then build `RedLoader/RedLoader.csproj` and `SonsSdk/SonsSdk.csproj` with `-p:SolutionDir="<repo root>\"`.
+
+Legacy (0.8.6, .NET 6) instructions:
 1. Install .NET 6.0 SDK
 2. Install Nuke globally with `dotnet tool install Nuke.GlobalTool --global`
 3. Install Rust (tripple:`x86_64-pc-windows-msvc` nightly)
@@ -118,5 +121,5 @@ Dedicated servers on windows should work out of the box. Just extract the RedLoa
 
 ## REQUIREMENTS:
 
-- [.NET 6.0 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0#runtime-6.0.15)
+- No separate .NET install: the loader ships its own .NET 10 runtime in `_Redloader\dotnet`
 - Microsoft Visual C++ 2015-2019 Re-distributable [[x64](https://aka.ms/vs/16/release/vc_redist.x64.exe)]

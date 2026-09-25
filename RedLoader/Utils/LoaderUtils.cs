@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -433,7 +433,7 @@ namespace RedLoader
         // public static string GameVersion { get => UnityInformationHandler.GameVersion; }
 
 
-        #if !NET6_0
+        #if !NET // .NET 5+ (any modern runtime); the InternalCall variant is for the old Mono/Framework build
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static bool IsGame32Bit();
 #else

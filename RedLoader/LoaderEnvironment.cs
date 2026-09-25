@@ -105,7 +105,7 @@ public static class LoaderEnvironment
         UserDataDirectory = Path.Combine(GameRootDirectory, "UserData");
         ModsDirectory = Path.Combine(GameRootDirectory, "Mods");
         PatcherPluginPath = Path.Combine(LoaderDirectory, "Patchers");
-        LoaderAssemblyDirectory = Path.Combine(LoaderDirectory, "net6");
+        LoaderAssemblyDirectory = Path.Combine(LoaderDirectory, "net10");
         LoaderAssemblyPath = Path.Combine(LoaderAssemblyDirectory,
                                           $"{Assembly.GetExecutingAssembly().GetName().Name}.dll");
         CachePath = Path.Combine(LoaderDirectory, "cache");

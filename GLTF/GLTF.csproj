@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6</TargetFramework>
+        <TargetFramework>$(LoaderTfm)</TargetFramework>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <CopyToOuput>true</CopyToOuput>
@@ -24,7 +24,7 @@
             <HintPath>$(GamePath)\$(ProjectAlias)\Game\Il2CppSystem.Core.dll</HintPath>
         </Reference>
         <Reference Include="Alt.Json">
-            <HintPath>$(GamePath)\$(ProjectAlias)\net6\Alt.Json.dll</HintPath>
+            <HintPath>..\Libs\Alt.Json.dll</HintPath>
         </Reference>
         <Reference Include="Unity.Addressables">
             <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.Addressables.dll</HintPath>
@@ -111,7 +111,7 @@
 
     <Target Name="CopyProjectDllOnly" AfterTargets="Build">
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\net6" />
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)" Condition="Exists('$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)')" />
     </Target>
 
 </Project>

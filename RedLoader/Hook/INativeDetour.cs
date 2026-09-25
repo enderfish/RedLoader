@@ -1,17 +1,28 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using RedLoader.Unity.IL2CPP.Hook.Dobby;
 using RedLoader.Unity.IL2CPP.Hook.Funchook;
-using MonoMod.RuntimeDetour;
 using MonoMod.Utils;
 using RedLoader;
 
 namespace RedLoader.Unity.IL2CPP.Hook;
 
-public interface INativeDetour : IDetour
+/// <summary>
+///     A native (function pointer) detour. Previously extended MonoMod 22's IDetour; MonoMod 25 removed that
+///     interface, so the members RedLoader relies on are declared here directly.
+/// </summary>
+public interface INativeDetour : IDisposable
 {
     private static readonly DetourProvider DetourProviderType = DetourProvider.Default;
+
+    void Apply();
+    void Undo();
+    void Free();
+    MethodBase GenerateTrampoline(MethodBase signature = null);
+    T GenerateTrampoline<T>() where T : Delegate;
+    bool IsValid { get; }
+    bool IsApplied { get; }
 
     public nint OriginalMethodPtr { get; }
     public nint DetourMethodPtr { get; }

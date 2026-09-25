@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6</TargetFramework>
+        <TargetFramework>$(LoaderTfm)</TargetFramework>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -19,7 +19,7 @@
     </ItemGroup>
     
     <ItemGroup>
-        <PackageReference Include="HarmonyX" Version="2.10.1" />
+        <PackageReference Include="HarmonyX" Version="2.16.1" />
     </ItemGroup>
     
     <ItemGroup>
@@ -85,9 +85,6 @@
       </Reference>
       <Reference Include="Il2CppSystem.Core">
         <HintPath>$(GamePath)\$(ProjectAlias)\Game\Il2CppSystem.Core.dll</HintPath>
-      </Reference>
-      <Reference Include="iTween">
-        <HintPath>$(GamePath)\$(ProjectAlias)\Game\iTween.dll</HintPath>
       </Reference>
       <Reference Include="Newtonsoft.Json">
         <HintPath>$(GamePath)\$(ProjectAlias)\Game\Newtonsoft.Json.dll</HintPath>
@@ -225,7 +222,7 @@
         <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.AssetBundleModule.dll</HintPath>
       </Reference>
       <Reference Include="Alt.Json">
-        <HintPath>$(GamePath)\$(ProjectAlias)\net6\Alt.Json.dll</HintPath>
+        <HintPath>..\Libs\Alt.Json.dll</HintPath>
       </Reference>
     </ItemGroup>
     
@@ -241,8 +238,7 @@
     <Target Name="CopyProjectDllOnly" AfterTargets="Build">
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).xml" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\net6" />
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="E:\Program Files (x86)\Steam\steamapps\common\Sons Of The Forest Dedicated Server\_Redloader\net6" />
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)" Condition="Exists('$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)')" />
     </Target>
 
 </Project>
