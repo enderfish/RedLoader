@@ -107,11 +107,7 @@
 
     <Target Name="CopyProjectDllOnly" AfterTargets="Build">
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
-    </Target>
-
-    <Target Name="CopyProjectDllOnly" AfterTargets="Build">
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)" Condition="Exists('$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)')" />
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)" Condition="'$(DeployToGame)' != 'false' And Exists('$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)')" />
     </Target>
 
 </Project>

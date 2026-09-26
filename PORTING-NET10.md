@@ -36,6 +36,14 @@ Updated from 4.3.0 to 4.5.0 (`version.dll` is Doorstop's `winhttp.dll` for x64, 
 ### Packaging script (`build/Program.cs`)
 Constants updated (`DotnetRuntimeVersion` 10.0.12, `DoorstopVersion` 4.5.0, new `LoaderNetFolder`), the runtime download now points at Microsoft's per-RID archive, and the dist step flattens `shared/Microsoft.NETCore.App/<version>` into `_Redloader/dotnet`. The Cake/Nuke pipeline itself was not run for this port; the dist in `bin/dist/Unity.IL2CPP-win-x64` was assembled by hand following the same layout.
 
+Since #6 the pipeline runs on .NET 10 and produces the release zip directly:
+
+```
+dotnet run --project build/Build.csproj -c Release -- --target MakeZip --game-path="<Sons Of The Forest folder>"
+```
+
+Output is `bin/dist/Redloader.zip`. Doorstop, Dobby and the runtime are checked against the hashes in `BuildContext.PinnedHashes` before extraction; when bumping any of them, vet the new file and update its pin or the build stops.
+
 ### Misc
 - Hardcoded personal paths (`F:\SteamLibrary\...`, the `E:\...Dedicated Server` copy) were removed. Post-build copies now go to `$(GamePath)\_Redloader\$(LoaderNetFolder)` only when that folder exists. Override `GamePath` on the command line or in `Directory.Build.props`.
 - `SonsSdk.csproj` no longer references `iTween.dll` (the game no longer generates it and the only usage was commented out).
@@ -56,7 +64,7 @@ Loader output lands in `bin/Unity.IL2CPP`. That folder plus `GLTF.dll` (from `GL
 - #2 If interop generation fails, `IL2CPPChainloader` starts the game unmodded with a warning box instead of dying inside the JIT hook (`Il2CppInteropManager.GenerationFailed`).
 - #3 The Unity base-libraries download is verified against a pinned SHA-256 per Unity version (`KnownUnityBaseLibraryHashes`). After a game update that bumps Unity, add the new hash there or players get the #2 fallback until you do.
 
-Note for developers: `RedLoader.csproj` and `SonsSdk.csproj` copy their output into `$(GamePath)\_Redloader\$(LoaderNetFolder)` after every build when that folder exists, so building replaces the installed loader.
+Note for developers: `RedLoader.csproj`, `SonsSdk.csproj` and `GLTF.csproj` copy their output into `$(GamePath)\_Redloader\$(LoaderNetFolder)` after every build when that folder exists, so building replaces the installed loader. Pass `-p:DeployToGame=false` to skip that copy; the packaging pipeline always does.
 
 ## Not done / worth checking next
 - Only Windows x64 was tested. Linux/macOS Doorstop paths and the Unix console rewrite are untested.

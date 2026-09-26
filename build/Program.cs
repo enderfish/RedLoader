@@ -5,21 +5,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Xml.Linq;
 using Cake.Common;
 using Cake.Common.IO;
 using Cake.Common.Tools.DotNet;
 using Cake.Common.Tools.DotNet.Build;
-using Cake.Common.Tools.DotNet.NuGet.Push;
+using Cake.Common.Tools.DotNet.MSBuild;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Frosting;
-using Cake.Git;
-using Cake.Json;
-using LibGit2Sharp;
-using Microsoft.Build.Definition;
-using Microsoft.Build.Evaluation;
-using Newtonsoft.Json;
 
 return new CakeHost()
        .UseContext<BuildContext>()
@@ -56,11 +52,11 @@ public class BuildContext : FrostingContext
         OutputDirectory = RootDirectory.Combine("bin");
         CacheDirectory = OutputDirectory.Combine(".dep_cache");
         DistributionDirectory = OutputDirectory.Combine("dist");
-        var props = Project.FromFile(RootDirectory.CombineWithFilePath("Directory.Build.props").FullPath,
-                                     new ProjectOptions());
-        VersionPrefix = props.GetPropertyValue("VersionPrefix");
-        CurrentCommit = ctx.GitLogTip(RootDirectory);
+        VersionPrefix = XDocument.Load(RootDirectory.CombineWithFilePath("Directory.Build.props").FullPath)
+                                 .Descendants("VersionPrefix").First().Value;
+        CurrentCommitSha = ctx.Git($"-C \"{RootDirectory.FullPath}\" rev-parse HEAD").Trim();
 
+        GamePath = ctx.Argument("game-path", "");
         BuildType = ctx.Argument("build-type", ProjectBuildType.Release);
         // BuildType = ProjectBuildType.Development;
         BuildId = ctx.Argument("build-id", -1);
@@ -81,7 +77,10 @@ public class BuildContext : FrostingContext
     public DirectoryPath DistributionDirectory { get; }
 
     public string VersionPrefix { get; }
-    public GitCommit CurrentCommit { get; }
+    public string CurrentCommitSha { get; }
+
+    /// <summary>Game folder whose generated _Redloader\Game assemblies SonsSdk and GLTF compile against.</summary>
+    public string GamePath { get; }
 
     public string VersionSuffix => BuildType switch
     {
@@ -95,6 +94,23 @@ public class BuildContext : FrostingContext
 
     public static string DobbyZipUrl(string arch) =>
         $"https://github.com/BepInEx/Dobby/releases/download/v{DobbyVersion}/dobby-{arch}.zip";
+
+    /// <summary>
+    ///     Expected hashes of every archive the build downloads, checked before anything is extracted.
+    ///     Update a pin only after vetting the new file. The runtime pin is Microsoft's published SHA-512
+    ///     (builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json).
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> PinnedHashes = new Dictionary<string, string>
+    {
+        [DoorstopZipUrl("win")] = "sha256:7bb953e8d883c8bde76ced96f6d0e45660ad6e0151880d8ab5856bf4f532b147",
+        [DobbyZipUrl("win")] = "sha256:980e67fb8e945e2fe39dac759a54fe3be46e74c38f9b8181fda83e10e1d5839e",
+        [DotnetRuntimeZipUrl("win-x64")] =
+            "sha512:844fa99e16fd6f44e0a7c29def7a82d7846902334d6a955248a9519a4dddb3f5acceb9c9223bef69f8c83b8ae2417537e5b76dddf79fb7117dc85b5039bc1297",
+    };
+
+    /// <summary>Cache key that changes whenever the version or any pinned hash changes, forcing a fresh, verified download.</summary>
+    public static string CacheKey(string version, IEnumerable<string> urls) =>
+        version + "|" + string.Join(",", urls.Select(u => PinnedHashes.TryGetValue(u, out var h) ? h : "unpinned"));
 }
 
 [TaskName("Clean")]
@@ -120,19 +136,21 @@ public sealed class CompileTask : FrostingTask<BuildContext>
     {
         var buildSettings = new DotNetBuildSettings
         {
-            Configuration = ctx.BuildType == BuildContext.ProjectBuildType.Release ? "Release" : "Debug"
+            Configuration = ctx.BuildType == BuildContext.ProjectBuildType.Release ? "Release" : "Debug",
+            MSBuildSettings = new DotNetMSBuildSettings
+            {
+                // Packaging must not copy freshly built DLLs into a game install as a side effect.
+                Properties = { ["DeployToGame"] = new[] { "false" } }
+            }
         };
+        if (!string.IsNullOrEmpty(ctx.GamePath))
+            buildSettings.MSBuildSettings.Properties["GamePath"] = new[] { ctx.GamePath };
         if (ctx.BuildType != BuildContext.ProjectBuildType.Release)
         {
-            buildSettings.MSBuildSettings = new()
-            {
-                VersionSuffix = ctx.VersionSuffix,
-                Properties =
-                {
-                    ["SourceRevisionId"] = new[] { ctx.CurrentCommit.Sha },
-                    ["RepositoryBranch"] = new[] { ctx.GitBranchCurrent(ctx.RootDirectory).FriendlyName }
-                }
-            };
+            buildSettings.MSBuildSettings.VersionSuffix = ctx.VersionSuffix;
+            buildSettings.MSBuildSettings.Properties["SourceRevisionId"] = new[] { ctx.CurrentCommitSha };
+            buildSettings.MSBuildSettings.Properties["RepositoryBranch"] =
+                new[] { ctx.Git($"-C \"{ctx.RootDirectory.FullPath}\" rev-parse --abbrev-ref HEAD").Trim() };
         }
 
         ctx.DotNetBuild(ctx.RootDirectory.FullPath, buildSettings);
@@ -149,14 +167,17 @@ public sealed class DownloadDependenciesTask : FrostingTask<BuildContext>
 
         var cache = new DependencyCache(ctx, ctx.CacheDirectory.CombineWithFilePath("cache.json"));
 
-        cache.Refresh("NeighTools/UnityDoorstop", BuildContext.DoorstopVersion, () =>
+        // Only fetch what the configured distributions actually package.
+        var osNames = ctx.Distributions.Select(d => d.Os).Distinct().ToArray();
+
+        cache.Refresh("NeighTools/UnityDoorstop",
+                      BuildContext.CacheKey(BuildContext.DoorstopVersion, osNames.Select(BuildContext.DoorstopZipUrl)), () =>
         {
             ctx.Log.Information($"Downloading Doorstop {BuildContext.DoorstopVersion}");
             var doorstopDir = ctx.CacheDirectory.Combine("doorstop");
             ctx.CreateDirectory(doorstopDir);
             ctx.CleanDirectory(doorstopDir);
-            var archs = new[] { "win", "linux", "macos" };
-            var versions = archs
+            var versions = osNames
                            .Select(a => ($"Doorstop ({a})",
                                          BuildContext.DoorstopZipUrl(a),
                                          doorstopDir.Combine($"doorstop_{a}")))
@@ -164,20 +185,22 @@ public sealed class DownloadDependenciesTask : FrostingTask<BuildContext>
             ctx.DownloadZipFiles($"Doorstop {BuildContext.DoorstopVersion}", versions);
         });
 
-        cache.Refresh("BepInEx/Dobby", BuildContext.DobbyVersion, () =>
+        cache.Refresh("BepInEx/Dobby",
+                      BuildContext.CacheKey(BuildContext.DobbyVersion, osNames.Select(BuildContext.DobbyZipUrl)), () =>
         {
             ctx.Log.Information($"Downloading Dobby {BuildContext.DobbyVersion}");
             var dobbyDir = ctx.CacheDirectory.Combine("dobby");
             ctx.CreateDirectory(dobbyDir);
             ctx.CleanDirectory(dobbyDir);
-            var archs = new[] { "win", "linux", "macos" };
-            var versions = archs
+            var versions = osNames
                            .Select(a => ($"Dobby ({a})", BuildContext.DobbyZipUrl(a), dobbyDir.Combine($"dobby_{a}")))
                            .ToArray();
             ctx.DownloadZipFiles($"Dobby {BuildContext.DobbyVersion}", versions);
         });
 
-        cache.Refresh("BepInEx/dotnet_runtime", BuildContext.DotnetRuntimeVersion, () =>
+        cache.Refresh("dotnet/runtime",
+                      BuildContext.CacheKey(BuildContext.DotnetRuntimeVersion,
+                                            ctx.Distributions.Select(d => BuildContext.DotnetRuntimeZipUrl(d.RuntimeIdentifier))), () =>
         {
             ctx.Log.Information($"Downloading dotnet runtime {BuildContext.DotnetRuntimeVersion}");
             var dotnetDir = ctx.CacheDirectory.Combine("dotnet");
@@ -204,7 +227,7 @@ public sealed class MakeDistTask : FrostingTask<BuildContext>
 
         data["version"] = ctx.VersionPrefix;
 
-        return JsonConvert.SerializeObject(data);
+        return JsonSerializer.Serialize(data);
     }
     
     public override void Run(BuildContext ctx)
