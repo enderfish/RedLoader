@@ -56,6 +56,7 @@ public class BuildContext : FrostingContext
                                  .Descendants("VersionPrefix").First().Value;
         CurrentCommitSha = ctx.Git($"-C \"{RootDirectory.FullPath}\" rev-parse HEAD").Trim();
 
+        GamePath = ctx.Argument("game-path", "");
         BuildType = ctx.Argument("build-type", ProjectBuildType.Release);
         // BuildType = ProjectBuildType.Development;
         BuildId = ctx.Argument("build-id", -1);
@@ -77,6 +78,9 @@ public class BuildContext : FrostingContext
 
     public string VersionPrefix { get; }
     public string CurrentCommitSha { get; }
+
+    /// <summary>Game folder whose generated _Redloader\Game assemblies SonsSdk and GLTF compile against.</summary>
+    public string GamePath { get; }
 
     public string VersionSuffix => BuildType switch
     {
@@ -115,19 +119,21 @@ public sealed class CompileTask : FrostingTask<BuildContext>
     {
         var buildSettings = new DotNetBuildSettings
         {
-            Configuration = ctx.BuildType == BuildContext.ProjectBuildType.Release ? "Release" : "Debug"
+            Configuration = ctx.BuildType == BuildContext.ProjectBuildType.Release ? "Release" : "Debug",
+            MSBuildSettings = new DotNetMSBuildSettings
+            {
+                // Packaging must not copy freshly built DLLs into a game install as a side effect.
+                Properties = { ["DeployToGame"] = new[] { "false" } }
+            }
         };
+        if (!string.IsNullOrEmpty(ctx.GamePath))
+            buildSettings.MSBuildSettings.Properties["GamePath"] = new[] { ctx.GamePath };
         if (ctx.BuildType != BuildContext.ProjectBuildType.Release)
         {
-            buildSettings.MSBuildSettings = new DotNetMSBuildSettings
-            {
-                VersionSuffix = ctx.VersionSuffix,
-                Properties =
-                {
-                    ["SourceRevisionId"] = new[] { ctx.CurrentCommitSha },
-                    ["RepositoryBranch"] = new[] { ctx.Git($"-C \"{ctx.RootDirectory.FullPath}\" rev-parse --abbrev-ref HEAD").Trim() }
-                }
-            };
+            buildSettings.MSBuildSettings.VersionSuffix = ctx.VersionSuffix;
+            buildSettings.MSBuildSettings.Properties["SourceRevisionId"] = new[] { ctx.CurrentCommitSha };
+            buildSettings.MSBuildSettings.Properties["RepositoryBranch"] =
+                new[] { ctx.Git($"-C \"{ctx.RootDirectory.FullPath}\" rev-parse --abbrev-ref HEAD").Trim() };
         }
 
         ctx.DotNetBuild(ctx.RootDirectory.FullPath, buildSettings);

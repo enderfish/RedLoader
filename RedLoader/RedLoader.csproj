@@ -61,7 +61,7 @@
         <Delete Files="@(FilesToDelete)"/>
     </Target>
 
-    <Target Name="CopyProjectDllOnly" AfterTargets="Build" Condition="Exists('$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)')">
+    <Target Name="CopyProjectDllOnly" AfterTargets="Build" Condition="'$(DeployToGame)' != 'false' And Exists('$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)')">
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\$(LoaderNetFolder)" />
     </Target>
 </Project>
