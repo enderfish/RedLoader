@@ -5,7 +5,7 @@
         <LangVersion>latest</LangVersion>
         <Nullable>disable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <PackageLicenseExpression>AGPL-2.0</PackageLicenseExpression>
+        <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <DebugType>embedded</DebugType>
         <Configurations>Debug;Release</Configurations>
