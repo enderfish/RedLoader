@@ -94,6 +94,23 @@ public class BuildContext : FrostingContext
 
     public static string DobbyZipUrl(string arch) =>
         $"https://github.com/BepInEx/Dobby/releases/download/v{DobbyVersion}/dobby-{arch}.zip";
+
+    /// <summary>
+    ///     Expected hashes of every archive the build downloads, checked before anything is extracted.
+    ///     Update a pin only after vetting the new file. The runtime pin is Microsoft's published SHA-512
+    ///     (builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json).
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> PinnedHashes = new Dictionary<string, string>
+    {
+        [DoorstopZipUrl("win")] = "sha256:7bb953e8d883c8bde76ced96f6d0e45660ad6e0151880d8ab5856bf4f532b147",
+        [DobbyZipUrl("win")] = "sha256:980e67fb8e945e2fe39dac759a54fe3be46e74c38f9b8181fda83e10e1d5839e",
+        [DotnetRuntimeZipUrl("win-x64")] =
+            "sha512:844fa99e16fd6f44e0a7c29def7a82d7846902334d6a955248a9519a4dddb3f5acceb9c9223bef69f8c83b8ae2417537e5b76dddf79fb7117dc85b5039bc1297",
+    };
+
+    /// <summary>Cache key that changes whenever the version or any pinned hash changes, forcing a fresh, verified download.</summary>
+    public static string CacheKey(string version, IEnumerable<string> urls) =>
+        version + "|" + string.Join(",", urls.Select(u => PinnedHashes.TryGetValue(u, out var h) ? h : "unpinned"));
 }
 
 [TaskName("Clean")]
@@ -150,14 +167,17 @@ public sealed class DownloadDependenciesTask : FrostingTask<BuildContext>
 
         var cache = new DependencyCache(ctx, ctx.CacheDirectory.CombineWithFilePath("cache.json"));
 
-        cache.Refresh("NeighTools/UnityDoorstop", BuildContext.DoorstopVersion, () =>
+        // Only fetch what the configured distributions actually package.
+        var osNames = ctx.Distributions.Select(d => d.Os).Distinct().ToArray();
+
+        cache.Refresh("NeighTools/UnityDoorstop",
+                      BuildContext.CacheKey(BuildContext.DoorstopVersion, osNames.Select(BuildContext.DoorstopZipUrl)), () =>
         {
             ctx.Log.Information($"Downloading Doorstop {BuildContext.DoorstopVersion}");
             var doorstopDir = ctx.CacheDirectory.Combine("doorstop");
             ctx.CreateDirectory(doorstopDir);
             ctx.CleanDirectory(doorstopDir);
-            var archs = new[] { "win", "linux", "macos" };
-            var versions = archs
+            var versions = osNames
                            .Select(a => ($"Doorstop ({a})",
                                          BuildContext.DoorstopZipUrl(a),
                                          doorstopDir.Combine($"doorstop_{a}")))
@@ -165,20 +185,22 @@ public sealed class DownloadDependenciesTask : FrostingTask<BuildContext>
             ctx.DownloadZipFiles($"Doorstop {BuildContext.DoorstopVersion}", versions);
         });
 
-        cache.Refresh("BepInEx/Dobby", BuildContext.DobbyVersion, () =>
+        cache.Refresh("BepInEx/Dobby",
+                      BuildContext.CacheKey(BuildContext.DobbyVersion, osNames.Select(BuildContext.DobbyZipUrl)), () =>
         {
             ctx.Log.Information($"Downloading Dobby {BuildContext.DobbyVersion}");
             var dobbyDir = ctx.CacheDirectory.Combine("dobby");
             ctx.CreateDirectory(dobbyDir);
             ctx.CleanDirectory(dobbyDir);
-            var archs = new[] { "win", "linux", "macos" };
-            var versions = archs
+            var versions = osNames
                            .Select(a => ($"Dobby ({a})", BuildContext.DobbyZipUrl(a), dobbyDir.Combine($"dobby_{a}")))
                            .ToArray();
             ctx.DownloadZipFiles($"Dobby {BuildContext.DobbyVersion}", versions);
         });
 
-        cache.Refresh("BepInEx/dotnet_runtime", BuildContext.DotnetRuntimeVersion, () =>
+        cache.Refresh("dotnet/runtime",
+                      BuildContext.CacheKey(BuildContext.DotnetRuntimeVersion,
+                                            ctx.Distributions.Select(d => BuildContext.DotnetRuntimeZipUrl(d.RuntimeIdentifier))), () =>
         {
             ctx.Log.Information($"Downloading dotnet runtime {BuildContext.DotnetRuntimeVersion}");
             var dotnetDir = ctx.CacheDirectory.Combine("dotnet");
