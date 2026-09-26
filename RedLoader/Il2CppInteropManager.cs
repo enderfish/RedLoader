@@ -60,6 +60,13 @@ internal static partial class Il2CppInteropManager
 
     private static readonly string UnityBaseLibrariesSource = "https://unity.bepinex.dev/libraries/{VERSION}.zip";
 
+    // SHA-256 of Unity base-library zips that have been checked, keyed by Unity version.
+    // Downloads are only used if they match; for other versions the zip must be supplied by hand.
+    private static readonly Dictionary<string, string> KnownUnityBaseLibraryHashes = new()
+    {
+        ["2022.2.16"] = "2341efc7635e0982e93c61680a8ce6c99de2ea0e2ab1bc2785d44b1d2b7f838e", // Sons of the Forest
+    };
+
     private static readonly string ConfigUnhollowerDeobfuscationRegex = string.Empty;
 
     private static readonly bool ScanMethodRefs = true;
@@ -265,21 +272,43 @@ internal static partial class Il2CppInteropManager
         var baseFolder = Directory.CreateDirectory(UnityBaseLibsDirectory);
         baseFolder.EnumerateFiles("*.dll").Do(a=>a.Delete());
         var target = baseFolder.GetFiles(file).FirstOrDefault();
+        byte[] zipBytes;
         if (target != null) {
-            // Logger.LogMessage($"Reading unity base libraries from file {source}");
-            RLog.Msg($"Reading unity base libraries from file {source}");
-            using var fStream = target.OpenRead();
-            using var zipArchive = new ZipArchive(fStream, ZipArchiveMode.Read);
-            zipArchive.ExtractToDirectory(UnityBaseLibsDirectory);
+            RLog.Msg($"Reading unity base libraries from file {target.FullName}");
+            zipBytes = File.ReadAllBytes(target.FullName);
         } else {
-            // Logger.LogMessage($"Downloading unity base libraries {source}");
+            if (!KnownUnityBaseLibraryHashes.ContainsKey(version))
+                throw new InvalidOperationException(
+                    $"No verified hash for the Unity {version} base libraries, so {source} will not be downloaded. " +
+                    $"To use them anyway, place a zip you trust at {Path.Combine(UnityBaseLibsDirectory, file)}.");
+
             RLog.Msg($"Downloading unity base libraries {source}");
             using var httpClient = new HttpClient();
-            using var zipStream = httpClient.GetStreamAsync(source).GetAwaiter().GetResult();
-            // Logger.LogMessage("Extracting downloaded unity base libraries");
-            RLog.Msg("Extracting downloaded unity base libraries");
-            using var zipArchive = new ZipArchive(zipStream, ZipArchiveMode.Read);
-            zipArchive.ExtractToDirectory(UnityBaseLibsDirectory);
+            zipBytes = httpClient.GetByteArrayAsync(source).GetAwaiter().GetResult();
+        }
+
+        VerifyUnityBaseLibraries(version, zipBytes);
+
+        RLog.Msg("Extracting unity base libraries");
+        using var zipArchive = new ZipArchive(new MemoryStream(zipBytes), ZipArchiveMode.Read);
+        zipArchive.ExtractToDirectory(UnityBaseLibsDirectory);
+    }
+
+    private static void VerifyUnityBaseLibraries(string version, byte[] zipBytes)
+    {
+        var actual = Convert.ToHexString(SHA256.HashData(zipBytes)).ToLowerInvariant();
+        if (KnownUnityBaseLibraryHashes.TryGetValue(version, out var expected))
+        {
+            if (actual != expected)
+                throw new InvalidDataException(
+                    $"Unity {version} base libraries failed verification (SHA-256 {actual}, expected {expected}); refusing to use them.");
+
+            RLog.Msg($"Unity base libraries verified (SHA-256 {actual})");
+        }
+        else
+        {
+            // Only reachable for a zip the user placed by hand: there is no pinned hash for this Unity version.
+            RLog.Warning($"No verified hash for the Unity {version} base libraries; using the user-supplied zip (SHA-256 {actual}).");
         }
     }
 
