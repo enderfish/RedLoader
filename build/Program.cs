@@ -260,8 +260,6 @@ public sealed class MakeDistTask : FrostingTask<BuildContext>
             ctx.CopyDirectory(ctx.CacheDirectory.Combine("dotnet").Combine(dist.RuntimeIdentifier)
                                  .Combine("shared").Combine("Microsoft.NETCore.App").Combine(BuildContext.DotnetRuntimeVersion),
                               redloaderDir.Combine("dotnet"));
-            ctx.CopyFile(ctx.RootDirectory.Combine("Libs").GetFilePath("Splash.dll"), net6Dir.GetFilePath("Splash.dll"));
-            ctx.CopyFile(ctx.RootDirectory.Combine("Resources").GetFilePath("bg.png"), redloaderDir.GetFilePath("bg.png"));
             
             File.WriteAllText(redloaderDir.GetFilePath("info.json").FullPath, MakeInfoJson(ctx));
         }
