@@ -17,8 +17,8 @@
 <!--        <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>-->
 <!--        <PackageReference Include="Il2CppInterop.Runtime" Version="$(Il2CppInteropVersion)"/>-->
         <!-- Copy-local: the official .NET runtime does not bundle these (BepInEx's mini-coreclr did), and Il2CppInterop needs them at runtime. -->
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12"/>
         <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.6"/>
         <PackageReference Include="Samboy063.Cpp2IL.Core" Version="$(Cpp2IlVersion)"/>
         <PackageReference Include="SemanticVersioning" Version="3.0.0" />
