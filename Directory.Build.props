@@ -1,6 +1,8 @@
 <Project>
     <PropertyGroup>
-        <VersionPrefix>0.8.6</VersionPrefix>
+        <!-- Keep this a plain x.y.z: mod manifests' loaderVersion is compared against it with semver rules,
+             and a pre-release suffix such as -net10 would rank below x.y.z and reject mods that require it. -->
+        <VersionPrefix>0.9.1</VersionPrefix>
         <Authors>BepInEx, Toni Macaroni</Authors>
         <LangVersion>latest</LangVersion>
         <Nullable>disable</Nullable>
