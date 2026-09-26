@@ -35,9 +35,6 @@
         <HintPath>..\Libs\Il2Cppmscorlib.dll</HintPath>
           <Private>false</Private>
       </Reference>
-        <Reference Include="mcs">
-            <HintPath>..\Libs\mcs.dll</HintPath>
-        </Reference>
         <Reference Include="UnityEngine.CoreModule">
           <HintPath>..\Libs\UnityEngine.CoreModule-nstrip.dll</HintPath>
             <Private>false</Private>
