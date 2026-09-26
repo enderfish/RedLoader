@@ -82,6 +82,7 @@ public class IL2CPPChainloader : BaseChainloader
                 unhook = true;
 
                 Il2CppInteropManager.PreloadInteropAssemblies();
+                SplashWindow.SetProgressSteps(3);
                 
                 SceneHandler.Init();
                 GlobalBehaviour.Init();
@@ -91,6 +92,7 @@ public class IL2CPPChainloader : BaseChainloader
                 ModProcessor = (IModProcessor)Activator.CreateInstance(sdk.DefinedTypes.First(x=>typeof(IModProcessor).IsAssignableFrom(x)));
 
                 Instance.Execute();
+                SplashWindow.SetProgressSteps(4);
                 
                 GlobalEvents.OnApplicationStart.Invoke();
                 RegisterTypeInIl2Cpp.SetReady();
@@ -102,6 +104,7 @@ public class IL2CPPChainloader : BaseChainloader
                     UnityPatches.CreateAndApply();
                 
                 ModProcessor.InitAfterUnity();
+                SplashWindow.SetProgressSteps(5);
                 
                 if(CorePreferences.EnableScriptLoader.Value)
                     RedScriptManager.Init();
