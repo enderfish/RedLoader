@@ -8,7 +8,4 @@
     <ItemGroup>
         <PackageReference Include="Cake.Frosting" Version="6.2.0"/>
     </ItemGroup>
-    <ItemGroup>
-        <Content Include="$(SolutionDir)/.github/workflows/*.yml" LinkBase="ci"/>
-    </ItemGroup>
 </Project>
