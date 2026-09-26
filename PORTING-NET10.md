@@ -51,6 +51,13 @@ Requirements: .NET 10 SDK, and an existing `_Redloader\Game` folder in `GamePath
 
 Loader output lands in `bin/Unity.IL2CPP`. That folder plus `GLTF.dll` (from `GLTF/bin/Release/net10.0`) and the native `dobby.dll` is what goes in `_Redloader/net10`.
 
+## Changes merged after the port (cheerfulnut, 2026-09-26)
+- #1 `Libs/Splash.dll` (native, no source) and `Resources/bg.png` are gone; the loading window is now built in `Utils/SplashWindow.cs` from user32/comctl32/gdi32 calls, toggled by the existing `hide_status_window` preference. Nothing to copy into the dist for it any more.
+- #2 If interop generation fails, `IL2CPPChainloader` starts the game unmodded with a warning box instead of dying inside the JIT hook (`Il2CppInteropManager.GenerationFailed`).
+- #3 The Unity base-libraries download is verified against a pinned SHA-256 per Unity version (`KnownUnityBaseLibraryHashes`). After a game update that bumps Unity, add the new hash there or players get the #2 fallback until you do.
+
+Note for developers: `RedLoader.csproj` and `SonsSdk.csproj` copy their output into `$(GamePath)\_Redloader\$(LoaderNetFolder)` after every build when that folder exists, so building replaces the installed loader.
+
 ## Not done / worth checking next
 - Only Windows x64 was tested. Linux/macOS Doorstop paths and the Unix console rewrite are untested.
 - `Microsoft.Extensions.Logging` is still the 6.0.x package line; bumping to 10.0.x should be safe but was left alone to keep the diff small.
