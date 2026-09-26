@@ -213,6 +213,15 @@ internal static partial class Il2CppInteropManager
                             .Start();
     }
 
+    /// <summary>
+    ///     True when generating the interop assemblies failed on this launch. Mods can't be loaded without them,
+    ///     so the chainloader then lets the game start unmodded instead of crashing.
+    /// </summary>
+    internal static bool GenerationFailed { get; private set; }
+
+    /// <summary>Short reason for <see cref="GenerationFailed" />, for the user-facing message.</summary>
+    internal static string GenerationFailureReason { get; private set; }
+
     private static void GenerateInteropAssemblies()
     {
         if (!CheckIfGenerationRequired())
@@ -250,6 +259,8 @@ internal static partial class Il2CppInteropManager
         {
             // Logger.LogError($"Failed to generate Il2Cpp interop assemblies: {e}");
             RLog.Error($"Failed to generate Il2Cpp interop assemblies: {e}");
+            GenerationFailed = true;
+            GenerationFailureReason = e.Message;
         }
     }
 

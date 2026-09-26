@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using RedLoader.Bootstrap;
 using RedLoader.Unity.IL2CPP.Hook;
@@ -77,45 +78,14 @@ public class IL2CPPChainloader : BaseChainloader
         var unhook = false;
 
         if (methodName == "Internal_ActiveSceneChanged")
-            try
-            {
-                unhook = true;
+        {
+            unhook = true;
 
-                Il2CppInteropManager.PreloadInteropAssemblies();
-                SplashWindow.SetProgressSteps(3);
-                
-                SceneHandler.Init();
-                GlobalBehaviour.Init();
-
-                // TODO: Better implementation of this
-                var sdk = Assembly.LoadFrom(Path.Combine(LoaderEnvironment.LoaderAssemblyDirectory, "SonsSdk.dll"));
-                ModProcessor = (IModProcessor)Activator.CreateInstance(sdk.DefinedTypes.First(x=>typeof(IModProcessor).IsAssignableFrom(x)));
-
-                Instance.Execute();
-                SplashWindow.SetProgressSteps(4);
-                
-                GlobalEvents.OnApplicationStart.Invoke();
-                RegisterTypeInIl2Cpp.SetReady();
-                GlobalEvents.MelonHarmonyInit.Invoke();
-                
-                UnityMappers.RegisterMappers();
-                
-                if(CorePreferences.RedirectUnityLogs.Value)
-                    UnityPatches.CreateAndApply();
-                
-                ModProcessor.InitAfterUnity();
-                SplashWindow.SetProgressSteps(5);
-                
-                if(CorePreferences.EnableScriptLoader.Value)
-                    RedScriptManager.Init();
-            }
-            catch (Exception ex)
-            {
-                // Logger.Log(LogLevel.Fatal, "Unable to execute IL2CPP chainloader");
-                // Logger.Log(LogLevel.Error, ex);
-                RLog.Error("Unable to execute IL2CPP chainloader");
-                RLog.Error(ex);
-            }
+            if (Il2CppInteropManager.GenerationFailed)
+                StartUnmodded();
+            else
+                StartModRuntime();
+        }
 
         var result = originalInvoke(method, obj, parameters, exc);
 
@@ -128,6 +98,67 @@ public class IL2CPPChainloader : BaseChainloader
         }
 
         return result;
+    }
+
+    /// <summary>
+    ///     Without interop assemblies, merely compiling the mod runtime startup would need Unity types that don't exist,
+    ///     and that failure happens inside the JIT hook where it cannot be caught, killing the game. So skip mods entirely,
+    ///     tell the user, and let the game run unmodded.
+    /// </summary>
+    private static void StartUnmodded()
+    {
+        RLog.Error("Game code generation failed, so no mods will be loaded this session. Reason: "
+                   + Il2CppInteropManager.GenerationFailureReason);
+
+        if (!LoaderEnvironment.IsDedicatedServer)
+            LoaderUtils.ShowMessageBox(
+                "RedLoader couldn't prepare the game's code, so the game will start without mods.\n\n"
+                + "Reason: " + Il2CppInteropManager.GenerationFailureReason + "\n\n"
+                + "Details are in _Redloader\\Latest.log.",
+                "RedLoader", 0x00000030 /* MB_ICONWARNING */);
+    }
+
+    // NoInlining keeps this method (and the Unity types it needs) out of OnInvokeMethod, so it is only compiled when called.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void StartModRuntime()
+    {
+        try
+        {
+            Il2CppInteropManager.PreloadInteropAssemblies();
+            SplashWindow.SetProgressSteps(3);
+            
+            SceneHandler.Init();
+            GlobalBehaviour.Init();
+
+            // TODO: Better implementation of this
+            var sdk = Assembly.LoadFrom(Path.Combine(LoaderEnvironment.LoaderAssemblyDirectory, "SonsSdk.dll"));
+            ModProcessor = (IModProcessor)Activator.CreateInstance(sdk.DefinedTypes.First(x=>typeof(IModProcessor).IsAssignableFrom(x)));
+
+            Instance.Execute();
+            SplashWindow.SetProgressSteps(4);
+            
+            GlobalEvents.OnApplicationStart.Invoke();
+            RegisterTypeInIl2Cpp.SetReady();
+            GlobalEvents.MelonHarmonyInit.Invoke();
+            
+            UnityMappers.RegisterMappers();
+            
+            if(CorePreferences.RedirectUnityLogs.Value)
+                UnityPatches.CreateAndApply();
+            
+            ModProcessor.InitAfterUnity();
+            SplashWindow.SetProgressSteps(5);
+            
+            if(CorePreferences.EnableScriptLoader.Value)
+                RedScriptManager.Init();
+        }
+        catch (Exception ex)
+        {
+            // Logger.Log(LogLevel.Fatal, "Unable to execute IL2CPP chainloader");
+            // Logger.Log(LogLevel.Error, ex);
+            RLog.Error("Unable to execute IL2CPP chainloader");
+            RLog.Error(ex);
+        }
     }
 
     protected override void InitializeLoggers()
