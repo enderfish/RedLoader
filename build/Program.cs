@@ -5,21 +5,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Xml.Linq;
 using Cake.Common;
 using Cake.Common.IO;
 using Cake.Common.Tools.DotNet;
 using Cake.Common.Tools.DotNet.Build;
-using Cake.Common.Tools.DotNet.NuGet.Push;
+using Cake.Common.Tools.DotNet.MSBuild;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Frosting;
-using Cake.Git;
-using Cake.Json;
-using LibGit2Sharp;
-using Microsoft.Build.Definition;
-using Microsoft.Build.Evaluation;
-using Newtonsoft.Json;
 
 return new CakeHost()
        .UseContext<BuildContext>()
@@ -56,10 +52,9 @@ public class BuildContext : FrostingContext
         OutputDirectory = RootDirectory.Combine("bin");
         CacheDirectory = OutputDirectory.Combine(".dep_cache");
         DistributionDirectory = OutputDirectory.Combine("dist");
-        var props = Project.FromFile(RootDirectory.CombineWithFilePath("Directory.Build.props").FullPath,
-                                     new ProjectOptions());
-        VersionPrefix = props.GetPropertyValue("VersionPrefix");
-        CurrentCommit = ctx.GitLogTip(RootDirectory);
+        VersionPrefix = XDocument.Load(RootDirectory.CombineWithFilePath("Directory.Build.props").FullPath)
+                                 .Descendants("VersionPrefix").First().Value;
+        CurrentCommitSha = ctx.Git($"-C \"{RootDirectory.FullPath}\" rev-parse HEAD").Trim();
 
         BuildType = ctx.Argument("build-type", ProjectBuildType.Release);
         // BuildType = ProjectBuildType.Development;
@@ -81,7 +76,7 @@ public class BuildContext : FrostingContext
     public DirectoryPath DistributionDirectory { get; }
 
     public string VersionPrefix { get; }
-    public GitCommit CurrentCommit { get; }
+    public string CurrentCommitSha { get; }
 
     public string VersionSuffix => BuildType switch
     {
@@ -124,13 +119,13 @@ public sealed class CompileTask : FrostingTask<BuildContext>
         };
         if (ctx.BuildType != BuildContext.ProjectBuildType.Release)
         {
-            buildSettings.MSBuildSettings = new()
+            buildSettings.MSBuildSettings = new DotNetMSBuildSettings
             {
                 VersionSuffix = ctx.VersionSuffix,
                 Properties =
                 {
-                    ["SourceRevisionId"] = new[] { ctx.CurrentCommit.Sha },
-                    ["RepositoryBranch"] = new[] { ctx.GitBranchCurrent(ctx.RootDirectory).FriendlyName }
+                    ["SourceRevisionId"] = new[] { ctx.CurrentCommitSha },
+                    ["RepositoryBranch"] = new[] { ctx.Git($"-C \"{ctx.RootDirectory.FullPath}\" rev-parse --abbrev-ref HEAD").Trim() }
                 }
             };
         }
@@ -204,7 +199,7 @@ public sealed class MakeDistTask : FrostingTask<BuildContext>
 
         data["version"] = ctx.VersionPrefix;
 
-        return JsonConvert.SerializeObject(data);
+        return JsonSerializer.Serialize(data);
     }
     
     public override void Run(BuildContext ctx)
