@@ -114,6 +114,10 @@ public class IL2CPPChainloader : BaseChainloader
             RLog.Error("Game code generation failed, so no mods will be loaded this session. Reason: "
                        + Il2CppInteropManager.GenerationFailureReason);
 
+            // The loading window normally closes on OnApplicationLateStart, which only the mod runtime raises.
+            SplashWindow.UnhookLog();
+            SplashWindow.CloseWindow();
+
             if (!LoaderEnvironment.IsDedicatedServer)
                 LoaderUtils.ShowMessageBox(
                     "RedLoader couldn't prepare the game's code, so the game will start without mods.\n\n"
