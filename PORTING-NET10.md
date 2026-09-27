@@ -66,6 +66,8 @@ Loader output lands in `bin/Unity.IL2CPP`. That folder plus `GLTF.dll` (from `GL
 
 Note for developers: `RedLoader.csproj`, `SonsSdk.csproj` and `GLTF.csproj` copy their output into `$(GamePath)\_Redloader\$(LoaderNetFolder)` after every build when that folder exists, so building replaces the installed loader. Pass `-p:DeployToGame=false` to skip that copy; the packaging pipeline always does.
 
+Package lock files: every project, including `build/Build.csproj`, has a committed `packages.lock.json` recording the exact version and content hash of each NuGet package, direct and transitive. A restore fails with NU1403 if a downloaded package does not match its recorded hash. After changing a package reference, restore the solution and `build/Build.csproj` (the solution restore does not cover it) and commit the updated lock files with the change. `dotnet restore --locked-mode` checks that the lock files are up to date without changing them. `Dependencies/Il2CppInterop/Directory.Build.props` stops the root one applying there, so it enables lock files separately.
+
 ## Not done / worth checking next
 - Only Windows x64 was tested. Linux/macOS Doorstop paths and the Unix console rewrite are untested.
 - `Microsoft.Extensions.Logging` is still the 6.0.x package line; bumping to 10.0.x should be safe but was left alone to keep the diff small.
