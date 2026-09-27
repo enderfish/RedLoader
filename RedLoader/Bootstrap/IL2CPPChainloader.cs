@@ -104,18 +104,28 @@ public class IL2CPPChainloader : BaseChainloader
     ///     Without interop assemblies, merely compiling the mod runtime startup would need Unity types that don't exist,
     ///     and that failure happens inside the JIT hook where it cannot be caught, killing the game. So skip mods entirely,
     ///     tell the user, and let the game run unmodded.
+    ///     This runs inside the native runtime_invoke detour, where an escaping exception would kill the game, so it
+    ///     must not throw.
     /// </summary>
     private static void StartUnmodded()
     {
-        RLog.Error("Game code generation failed, so no mods will be loaded this session. Reason: "
-                   + Il2CppInteropManager.GenerationFailureReason);
+        try
+        {
+            RLog.Error("Game code generation failed, so no mods will be loaded this session. Reason: "
+                       + Il2CppInteropManager.GenerationFailureReason);
 
-        if (!LoaderEnvironment.IsDedicatedServer)
-            LoaderUtils.ShowMessageBox(
-                "RedLoader couldn't prepare the game's code, so the game will start without mods.\n\n"
-                + "Reason: " + Il2CppInteropManager.GenerationFailureReason + "\n\n"
-                + "Details are in _Redloader\\Latest.log.",
-                "RedLoader", 0x00000030 /* MB_ICONWARNING */);
+            if (!LoaderEnvironment.IsDedicatedServer)
+                LoaderUtils.ShowMessageBox(
+                    "RedLoader couldn't prepare the game's code, so the game will start without mods.\n\n"
+                    + "Reason: " + Il2CppInteropManager.GenerationFailureReason + "\n\n"
+                    + "Details are in _Redloader\\Latest.log.",
+                    "RedLoader", 0x00000030 /* MB_ICONWARNING */);
+        }
+        catch (Exception ex)
+        {
+            RLog.Error("Unable to show the start-without-mods warning");
+            RLog.Error(ex);
+        }
     }
 
     // NoInlining keeps this method (and the Unity types it needs) out of OnInvokeMethod, so it is only compiled when called.
