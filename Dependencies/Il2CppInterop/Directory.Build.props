@@ -16,6 +16,8 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <DebugType>embedded</DebugType>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- RedLoader: this file stops the repo-root Directory.Build.props applying here, so opt into lock files explicitly. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <ItemGroup>

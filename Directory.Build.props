@@ -10,6 +10,8 @@
         <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <DebugType>embedded</DebugType>
+        <!-- packages.lock.json records the exact version and content hash of every package, direct and transitive. -->
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <Configurations>Debug;Release</Configurations>
         <RepositoryUrl>https://github.com/ToniMacaroni/RedLoader</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
