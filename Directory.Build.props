@@ -2,7 +2,7 @@
     <PropertyGroup>
         <!-- Keep this a plain x.y.z: mod manifests' loaderVersion is compared against it with semver rules,
              and a pre-release suffix such as -net10 would rank below x.y.z and reject mods that require it. -->
-        <VersionPrefix>0.9.2</VersionPrefix>
+        <VersionPrefix>0.9.3</VersionPrefix>
         <Authors>BepInEx, Toni Macaroni</Authors>
         <LangVersion>latest</LangVersion>
         <Nullable>disable</Nullable>
