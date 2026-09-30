@@ -70,7 +70,6 @@ Package lock files: every project, including `build/Build.csproj`, has a committ
 
 ## Not done / worth checking next
 - Only Windows x64 was tested. Linux/macOS Doorstop paths and the Unix console rewrite are untested.
-- `Microsoft.Extensions.Logging` is still the 6.0.x package line; bumping to 10.0.x should be safe but was left alone to keep the diff small.
 - Cpp2IL is still `2022.1.0-pre-release.19`; pre-release.21 exists.
 - Interop assembly generation was not exercised on this run because `_Redloader/Game` already existed. Delete that folder and run once to confirm the generator path on .NET 10.
 - The mini-coreclr trimming that BepInEx applied is gone; if size matters, trim `_Redloader/dotnet` to what the TPA actually needs.
